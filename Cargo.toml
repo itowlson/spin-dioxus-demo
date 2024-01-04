@@ -13,14 +13,12 @@ crate-type = [ "cdylib" ]
 anyhow = "1"
 # Crate to simplify working with bytes.
 bytes = "1"
-dioxus = "0.3.2"
-dioxus-router = "0.3.0"
-dioxus-ssr = "0.3.0"
+dioxus = "0.4.3"
+dioxus-ssr = {version = "0.4.3", default-features = false }
+dioxus-router = "0.4.3"
 # General-purpose crate with common HTTP types.
 http = "0.2"
 # The Spin SDK.
-spin-sdk = { git = "https://github.com/fermyon/spin", tag = "v1.2.0" }
-# Crate that generates Rust Wasm bindings from a WebAssembly interface.
-wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "cb871cfa1ee460b51eb1d144b175b9aab9c50aba" }
+spin-sdk = { git = "https://github.com/fermyon/spin", tag = "v2.1.0" }
 
 [workspace]

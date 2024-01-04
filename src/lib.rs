@@ -2,44 +2,64 @@
 
 use anyhow::Result;
 use spin_sdk::{
-    http::{Request, Response},
+    http::{Request, Response, IntoResponse},
     http_component,
 };
 
 #[http_component]
-fn handle_dioxus_demo(req: Request) -> Result<Response> {
-    let url = req.headers().get("spin-full-url").unwrap().to_str()?;
+fn handle_dioxus_demo(req: Request) -> Result<impl IntoResponse> {
+    let url = req.header("spin-full-url").unwrap().as_str().unwrap();
+    let url: http::uri::Uri = url.parse()?;
+    let path = url.path().to_owned();
 
-    let router = rsx! {
-        Router {
-            initial_url: url.to_owned()
-            Menu {}
-            Route { to: "/", Home {} }
-            Route { to: "/home", Home {} }
-            Route { to: "/users", Users {} }
-            Route { to: "", NotFound {} }
-        }
-    };
-
-    let body = dioxus_ssr::render_lazy(router);
-    Ok(http::Response::builder()
+    let body = dioxus_ssr::render_lazy(rsx! { App { path: path } });
+    Ok(Response::builder()
         .status(200)
         .header("content-type", "text/html")
-        .body(Some(body.into()))?)
+        .body(body)
+        .build())
 }
 
 use dioxus::prelude::*;
-use dioxus_router::{Link, Route, Router};
+use dioxus_router::prelude::*;
 
-fn NotFound(cx: Scope) -> Element {
+#[component]
+fn App(cx: Scope, path: String) -> Element {
+    let initial: Route = path.parse().unwrap();
+    let config = move || {
+        RouterConfig::default().history(MemoryHistory::with_initial_path(initial))
+    };
     cx.render(rsx! {
-        div { "Oh no! This page doesn't exist" }
-        div {
-            Link { to: "/home", "Home" }
+        Menu {}
+        Router::<Route> {
+            config: config
         }
     })
 }
 
+#[rustfmt::skip]
+#[derive(Clone, Debug, PartialEq, Routable)]
+enum Route {
+    #[route("/")]
+    #[redirect("/home", || Route::Home {})]
+    Home {},
+    #[route("/users")]
+    Users {},
+    #[route("/:.._segments")]
+    NotFound { _segments: Vec<String> },
+}
+
+#[component]
+fn NotFound(cx: Scope, _segments: Vec<String>) -> Element {
+    cx.render(rsx! {
+        div { "Oh no! This page doesn't exist" }
+        div {
+            Link { to: Route::Home {}, "Home" }
+        }
+    })
+}
+
+#[component]
 fn Menu(cx: Scope) -> Element {
     cx.render(rsx! {
         div { "SPIN DIOXUS DEMO" }
@@ -47,12 +67,14 @@ fn Menu(cx: Scope) -> Element {
     })
 }
 
+#[component]
 fn Home(cx: Scope) -> Element {
     cx.render(rsx! {
         div { "Hello from Dioxus running on Spin" }
     })
 }
 
+#[component]
 fn Users(cx: Scope) -> Element {
     cx.render(rsx! {
         div { "No users defined!" }  // srs bzness logic
